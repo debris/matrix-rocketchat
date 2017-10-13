@@ -16,5 +16,5 @@ pub mod user_on_rocketchat_server;
 pub use self::connection_pool::ConnectionPool;
 pub use self::rocketchat_server::{NewRocketchatServer, RocketchatServer};
 pub use self::room::Room;
-pub use self::user::{NewUser, User};
+pub use self::user::User;
 pub use self::user_on_rocketchat_server::{NewUserOnRocketchatServer, UserOnRocketchatServer};

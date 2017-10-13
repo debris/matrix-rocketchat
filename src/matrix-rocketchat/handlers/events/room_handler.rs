@@ -197,13 +197,12 @@ impl<'a> RoomHandler<'a> {
         }
 
         self.connection.transaction(|| {
-            let invitation_submitter = User::find_or_create_by_matrix_user_id(self.connection, inviter_id.clone())?;
             match CommandHandler::build_help_message(
                 self.connection,
                 self.matrix_api,
                 self.config.as_url.clone(),
                 matrix_room_id.clone(),
-                &invitation_submitter,
+                &inviter_id,
             ) {
                 Ok(body) => {
                     self.matrix_api.send_text_message_event(matrix_room_id.clone(), matrix_bot_user_id, body)?;
@@ -213,7 +212,7 @@ impl<'a> RoomHandler<'a> {
                 }
             }
 
-            let room_name = t!(["defaults", "admin_room_display_name"]).l(&invitation_submitter.language);
+            let room_name = t!(["defaults", "admin_room_display_name"]).l(DEFAULT_LANGUAGE);
             if let Err(err) = self.matrix_api.set_room_name(matrix_room_id, room_name) {
                 log::log_info(self.logger, &err);
             }
@@ -227,9 +226,8 @@ impl<'a> RoomHandler<'a> {
             !self.is_private_room(matrix_room_id.clone())?
         {
             info!(self.logger, "Another user join the admin room {}, bot user is leaving", matrix_room_id);
-            let admin_room_language = self.admin_room_language(matrix_room_id.clone())?;
-            let body = t!(["errors", "other_user_joined"]).l(&admin_room_language);
             let bot_matrix_user_id = self.config.matrix_bot_user_id()?;
+            let body = t!(["errors", "other_user_joined"]).l(DEFAULT_LANGUAGE);
             self.matrix_api.send_text_message_event(matrix_room_id.clone(), bot_matrix_user_id.clone(), body)?;
             self.leave_and_forget_room(matrix_room_id, bot_matrix_user_id)?;
         }
@@ -248,12 +246,6 @@ impl<'a> RoomHandler<'a> {
     fn leave_and_forget_room(&self, matrix_room_id: RoomId, matrix_user_id: UserId) -> Result<()> {
         self.matrix_api.leave_room(matrix_room_id.clone(), matrix_user_id)?;
         self.matrix_api.forget_room(matrix_room_id)
-    }
-
-    fn admin_room_language(&self, matrix_room_id: RoomId) -> Result<String> {
-        let user_id = self.matrix_api.get_room_creator(matrix_room_id.clone())?;
-        let user = User::find(self.connection, &user_id)?;
-        Ok(user.language.clone())
     }
 
     fn is_remote_invite(&self, matrix_room_id: &RoomId) -> Result<bool> {

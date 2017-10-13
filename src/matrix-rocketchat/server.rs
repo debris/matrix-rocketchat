@@ -9,10 +9,9 @@ use slog::Logger;
 
 use api::MatrixApi;
 use config::Config;
-use db::{ConnectionPool, NewUser, User};
+use db::{ConnectionPool, User};
 use errors::*;
 use handlers::iron::{Rocketchat, RocketchatLogin, Transactions, Welcome};
-use i18n::*;
 use log::IronLogger;
 
 /// The application service server
@@ -79,24 +78,14 @@ impl<'a> Server<'a> {
     fn setup_bot_user(&self, connection: &SqliteConnection, matrix_api: &MatrixApi) -> Result<()> {
         let matrix_bot_user_id = self.config.matrix_bot_user_id()?;
         debug!(self.logger, "Setting up bot user {}", matrix_bot_user_id);
-        match User::find_by_matrix_user_id(connection, &matrix_bot_user_id)? {
-            Some(user) => {
-                debug!(self.logger, "Bot user {} exists, skipping", user.matrix_user_id);
-            }
-            None => {
-                debug!(self.logger, "Bot user {} doesn't exists, starting registration", matrix_bot_user_id);
-
-                connection.transaction(|| {
-                    let new_user = NewUser {
-                        matrix_user_id: matrix_bot_user_id.clone(),
-                        language: DEFAULT_LANGUAGE,
-                    };
-                    User::insert(connection, &new_user)?;
-                    matrix_api.register(self.config.sender_localpart.clone())
-                })?;
-                info!(self.logger, "Bot user {} successfully registered", matrix_bot_user_id);
-            }
+        if User::exists(matrix_api, &matrix_bot_user_id)? {
+            debug!(self.logger, "Bot user {} exists, skipping", matrix_bot_user_id);
+            return Ok(());
         }
+
+        debug!(self.logger, "Bot user {} doesn't exists, starting registration", matrix_bot_user_id);
+        matrix_api.register(self.config.sender_localpart.clone())?;
+        info!(self.logger, "Bot user {} successfully registered", matrix_bot_user_id);
         Ok(())
     }
 }

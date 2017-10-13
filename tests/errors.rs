@@ -22,16 +22,6 @@ use ruma_client_api::r0::send::send_message_event::Endpoint as SendMessageEventE
 use ruma_identifiers::{RoomId, UserId};
 
 #[test]
-fn error_descriptions_from_the_error_chain_are_passed_to_the_outer_error() {
-    let test = Test::new().run();
-
-    let connection = test.connection_pool.get().unwrap();
-    let not_found_error = User::find(&connection, &UserId::try_from("@nonexisting:localhost").unwrap()).unwrap_err();
-
-    assert_eq!(not_found_error.description(), "Error when selecting a record");
-}
-
-#[test]
 fn the_user_gets_a_message_when_the_rocketchat_error_cannot_be_deserialized() {
     let test = Test::new();
     let (message_forwarder, receiver) = MessageForwarder::new();

@@ -29,22 +29,19 @@ impl<'a> ErrorNotifier<'a> {
             msg = msg + " caused by: " + &format!("{}", err);
         }
 
-        debug!(self.logger, "{}", msg);
-
         let matrix_bot_id = self.config.matrix_bot_user_id()?;
-        let language = match User::find_by_matrix_user_id(self.connection, user_id)? {
-            Some(user) => user.language,
-            None => DEFAULT_LANGUAGE.to_string(),
-        };
-
         let user_message = match err.user_message {
-            Some(ref user_message) => user_message,
+            Some(ref user_message) => {
+                debug!(self.logger, "{}", msg);
+                user_message
+            }
             None => {
-                let user_msg = t!(["defaults", "internal_error"]).l(&language);
+                error!(self.logger, "{}", msg);
+                let user_msg = t!(["defaults", "internal_error"]).l(DEFAULT_LANGUAGE);
                 return self.matrix_api.send_text_message_event(room_id, matrix_bot_id, user_msg);
             }
         };
 
-        self.matrix_api.send_text_message_event(room_id, matrix_bot_id, user_message.l(&language))
+        self.matrix_api.send_text_message_event(room_id, matrix_bot_id, user_message.l(DEFAULT_LANGUAGE))
     }
 }
